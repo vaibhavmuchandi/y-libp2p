@@ -5,12 +5,14 @@
   "main": "dist/index.js",
   "author": "marcopolo",
   "license": "MIT",
+  "type": "module",
   "devDependencies": {
     "@babel/core": "^7.22.9",
     "@babel/preset-env": "^7.22.9",
     "@babel/preset-typescript": "^7.22.5",
     "@chainsafe/libp2p-gossipsub": "^9.1.0",
     "@chainsafe/libp2p-noise": "^12.0.2",
+    "@chainsafe/libp2p-yamux": "^4.0.2",
     "@libp2p/interface-libp2p": "^3.2.0",
     "@libp2p/interface-pubsub": "^4.0.1",
     "@libp2p/mplex": "^8.0.4",
@@ -31,10 +33,10 @@
   },
   "dependencies": {
     "@libp2p/peer-id": ">=2.0.4",
-    "y-protocols": "^1.0.x"
+    "y-protocols": "^1.0.x",
+    "yjs": "^13.6.7"
   },
   "peerDependencies": {
-    "libp2p": ">=0.45.9",
-    "yjs": "13.6.x"
+    "libp2p": ">=0.45.9"
   }
 }

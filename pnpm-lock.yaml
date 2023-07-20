@@ -15,8 +15,8 @@ dependencies:
     specifier: ^1.0.x
     version: 1.0.0
   yjs:
-    specifier: 13.6.x
-    version: 13.6.0
+    specifier: ^13.6.7
+    version: 13.6.7
 
 devDependencies:
   '@babel/core':
@@ -34,6 +34,9 @@ devDependencies:
   '@chainsafe/libp2p-noise':
     specifier: ^12.0.2
     version: 12.0.2
+  '@chainsafe/libp2p-yamux':
+    specifier: ^4.0.2
+    version: 4.0.2
   '@libp2p/interface-libp2p':
     specifier: ^3.2.0
     version: 3.2.0
@@ -1391,6 +1394,23 @@ packages:
       protons-runtime: 5.0.1(uint8arraylist@2.4.3)
       uint8arraylist: 2.4.3
       uint8arrays: 4.0.4
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /@chainsafe/libp2p-yamux@4.0.2:
+    resolution: {integrity: sha512-p0m/4ab4JLaIQqUtxvm8bSqdt9sb0uXX8PFj1CQM1eJLeV1LxzzygaSOeLxN/5ckHCuK7q/9eb9xybvl6vz/JA==}
+    engines: {node: '>=16.0.0', npm: '>=7.0.0'}
+    dependencies:
+      '@libp2p/interface-connection': 5.1.1
+      '@libp2p/interface-stream-muxer': 4.1.2
+      '@libp2p/interfaces': 3.3.2
+      '@libp2p/logger': 2.1.1
+      abortable-iterator: 5.0.1
+      any-signal: 4.1.1
+      it-pipe: 3.0.1
+      it-pushable: 3.2.1
+      uint8arraylist: 2.4.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -4556,8 +4576,8 @@ packages:
       yargs-parser: 21.1.1
     dev: true
 
-  /yjs@13.6.0:
-    resolution: {integrity: sha512-tFZtuQV6XamtDa9SfZhUsxchUcTBWe7fzpo1UWZDLXGejTZ5t9MCswGYzyvq7+BDzfEc9oX54QEbzI/4NyS6+g==}
+  /yjs@13.6.7:
+    resolution: {integrity: sha512-mCZTh4kjvUS2DnaktsYN6wLH3WZCJBLqrTdkWh1bIDpA/sB/GNFaLA/dyVJj2Hc7KwONuuoC/vWe9bwBBosZLQ==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
     dependencies:
       lib0: 0.2.78

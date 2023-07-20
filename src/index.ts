@@ -1,11 +1,11 @@
-import * as Y from 'yjs'
 import type { Doc as YDoc } from 'yjs'
 import type { Libp2p } from '@libp2p/interface-libp2p'
-import { Uint8ArrayEquals } from './util'
-import PeerId from '@libp2p/peer-id'
+import type { Awareness } from 'y-protocols/awareness'
+import * as Y from 'yjs'
+import { Uint8ArrayEquals } from './util.js'
+import { peerIdFromString } from '@libp2p/peer-id'
 // @ts-ignore
 import * as awarenessProtocol from 'y-protocols/dist/awareness.cjs'
-import type { Awareness } from 'y-protocols/awareness'
 
 // the Muxedstream type is wrong for the protocol streams
 type ProtocolStream = {
@@ -213,7 +213,7 @@ class Provider {
 
   private async syncPeer(peerID: string) {
     const thiz = this;
-    const peer = await this.node.peerStore.get(PeerId.peerIdFromString(peerID));
+    const peer = await this.node.peerStore.get(peerIdFromString(peerID));
     let success = false;
     if (!peer) {
       return
