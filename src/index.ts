@@ -1,10 +1,8 @@
 import * as Y from 'yjs'
 import type { Doc as YDoc } from 'yjs'
-import type Libp2p from 'libp2p'
+import type { Libp2p } from '@libp2p/interface-libp2p'
 import { Uint8ArrayEquals } from './util'
-import PeerId from 'peer-id'
-import type { BufferList } from 'libp2p-interfaces/src/pubsub'
-import { Connection } from 'libp2p-interfaces/src/topology'
+import PeerId from '@libp2p/peer-id'
 // @ts-ignore
 import * as awarenessProtocol from 'y-protocols/dist/awareness.cjs'
 import type { Awareness } from 'y-protocols/awareness'
@@ -12,7 +10,7 @@ import type { Awareness } from 'y-protocols/awareness'
 // the Muxedstream type is wrong for the protocol streams
 type ProtocolStream = {
   sink: (data: Iterable<any> | AsyncIterable<any>) => Promise<void>
-  source: AsyncIterable<BufferList>
+  source: AsyncIterable<any>
   close: () => void
 }
 
@@ -50,7 +48,7 @@ class Provider {
     this.ydoc = ydoc;
     this.node = node;
     this.topic = topic;
-    this.peerID = this.node.peerId.toB58String()
+    this.peerID = this.node.peerId.toString()
     this.stateVectors[this.peerID] = Y.encodeStateVector(this.ydoc)
     this.awareness = new awarenessProtocol.Awareness(ydoc)
 
@@ -60,14 +58,14 @@ class Provider {
 
     ydoc.on('update', this.onUpdate.bind(this));
 
-    node.pubsub.subscribe(changesTopic(topic))
-    node.pubsub.on(changesTopic(topic), this.onPubSubChanges.bind(this));
+    (this.node.services.pubsub as any).subscribe(changesTopic(topic))
+      (this.node.services.pubsub as any).on(changesTopic(topic), this.onPubSubChanges.bind(this));
 
-    node.pubsub.subscribe(stateVectorTopic(topic))
-    node.pubsub.on(stateVectorTopic(topic), this.onPubSubStateVector.bind(this));
+    (this.node.services.pubsub as any).subscribe(stateVectorTopic(topic))
+      (this.node.services.pubsub as any).on(stateVectorTopic(topic), this.onPubSubStateVector.bind(this));
 
-    node.pubsub.subscribe(awarenessProtocolTopic(topic))
-    node.pubsub.on(awarenessProtocolTopic(topic), this.onPubSubAwareness.bind(this));
+    (this.node.services.pubsub as any).subscribe(awarenessProtocolTopic(topic))
+      (this.node.services.pubsub as any).on(awarenessProtocolTopic(topic), this.onPubSubAwareness.bind(this));
 
     // @ts-ignore
     node.handle(syncProtocol(topic), this.onSyncMsg.bind(this));
@@ -76,14 +74,14 @@ class Provider {
   }
 
   destroy() {
-    this.node.pubsub.unsubscribe(changesTopic(this.topic))
-    this.node.pubsub.removeAllListeners(changesTopic(this.topic))
+    (this.node.services.pubsub as any).unsubscribe(changesTopic(this.topic))
+      (this.node.services.pubsub as any).removeAllListeners(changesTopic(this.topic))
 
-    this.node.pubsub.unsubscribe(stateVectorTopic(this.topic))
-    this.node.pubsub.removeAllListeners(stateVectorTopic(this.topic))
+      (this.node.services.pubsub as any).unsubscribe(stateVectorTopic(this.topic))
+      (this.node.services.pubsub as any).removeAllListeners(stateVectorTopic(this.topic))
 
-    this.node.pubsub.unsubscribe(awarenessProtocolTopic(this.topic))
-    this.node.pubsub.removeAllListeners(awarenessProtocolTopic(this.topic))
+      (this.node.services.pubsub as any).unsubscribe(awarenessProtocolTopic(this.topic))
+      (this.node.services.pubsub as any).removeAllListeners(awarenessProtocolTopic(this.topic))
 
     // @ts-ignore
     node.unhandle(syncProtocol(topic))
@@ -100,7 +98,7 @@ class Provider {
       if (this.initialSync) {
         return
       }
-      const peers = [...this.node.pubsub.topics.get(stateVectorTopic(this.topic)) || []]
+      const peers = [...(this.node.services.pubsub as any).topics.get(stateVectorTopic(this.topic)) || []]
 
       if (peers.length !== 0) {
         const peer = peers[i % peers.length]
@@ -131,13 +129,13 @@ class Provider {
       return
     }
 
-    this.node.pubsub.publish(changesTopic(this.topic), updateData);
+    (this.node.services.pubsub as any).publish(changesTopic(this.topic), updateData);
     const stateV = Y.encodeStateVector(this.ydoc)
     this.stateVectors[this.peerID] = stateV;
-    this.node.pubsub.publish(stateVectorTopic(this.topic), stateV);
+    (this.node.services.pubsub as any).publish(stateVectorTopic(this.topic), stateV);
 
     // Publish awareness as well
-    this.node.pubsub.publish(awarenessProtocolTopic(this.topic), awarenessProtocol.encodeAwarenessUpdate(this.awareness, [this.ydoc.clientID]))
+    (this.node.services.pubsub as any).publish(awarenessProtocolTopic(this.topic), awarenessProtocol.encodeAwarenessUpdate(this.awareness, [this.ydoc.clientID]))
   }
 
   private onPubSubChanges(msg: any) {
@@ -198,7 +196,7 @@ class Provider {
     stream.close()
   }
 
-  private async onSyncMsg({ stream, connection, ...rest }: { stream: ProtocolStream, connection: Connection }) {
+  private async onSyncMsg({ stream, connection, ...rest }: { stream: ProtocolStream, connection: any }) {
     await this.runSyncProtocol(stream, connection.remotePeer.toB58String(), false)
   }
 
@@ -215,13 +213,13 @@ class Provider {
 
   private async syncPeer(peerID: string) {
     const thiz = this;
-    const multiaddrs = await this.node.peerStore.addressBook.getMultiaddrsForPeer(PeerId.createFromB58String(peerID));
+    const peer = await this.node.peerStore.get(PeerId.peerIdFromString(peerID));
     let success = false;
-    if (!multiaddrs) {
+    if (!peer) {
       return
     }
-    for (const ma of multiaddrs) {
-      const maStr = ma.toString()
+    for (const ma of peer.addresses) {
+      const maStr = ma.multiaddr
       try {
         const { stream } = await this.node.dialProtocol(maStr, syncProtocol(this.topic)) as any as { stream: ProtocolStream }
         await this.runSyncProtocol(stream, peerID, true)
