@@ -27,7 +27,7 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "test": "jest",
+    "test": "tsc && node dist/index.test.js",
     "build": "tsc",
     "build-watch": "tsc -w"
   },

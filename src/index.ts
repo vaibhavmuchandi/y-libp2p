@@ -1,4 +1,3 @@
-import type { Doc as YDoc } from 'yjs'
 import type { Libp2p } from '@libp2p/interface-libp2p'
 import type { Awareness } from 'y-protocols/awareness'
 import * as Y from 'yjs'
@@ -16,7 +15,7 @@ type ProtocolStream = {
 
 
 function changesTopic(topic: string): string {
-  return `/marcopolo/gossipPad/${topic}/changes/0.0.01`
+  return `/marcopolo/gossipPad/${topic}/changes/0.0.1`
 }
 
 function stateVectorTopic(topic: string): string {
@@ -32,7 +31,7 @@ function awarenessProtocolTopic(topic: string): string {
 }
 
 class Provider {
-  ydoc: YDoc;
+  ydoc: Y.Doc;
   node: Libp2p;
   peerID: string;
   topic: string
@@ -44,7 +43,7 @@ class Provider {
 
   aggressivelyKeepPeersUpdated: boolean = true;
 
-  constructor(ydoc: YDoc, node: Libp2p, topic: string) {
+  constructor(ydoc: Y.Doc, node: Libp2p, topic: string) {
     this.ydoc = ydoc;
     this.node = node;
     this.topic = topic;
@@ -58,33 +57,46 @@ class Provider {
 
     ydoc.on('update', this.onUpdate.bind(this));
 
-    (this.node.services.pubsub as any).subscribe(changesTopic(topic))
-      (this.node.services.pubsub as any).on(changesTopic(topic), this.onPubSubChanges.bind(this));
+    (this.node.services.pubsub as any).subscribe(changesTopic(topic));
+    (this.node.services.pubsub as any).addEventListener("message", (_evt) => {
+      if (_evt.detail.topic == changesTopic(topic)) {
+        this.onPubSubChanges.bind(this)
+      }
+    });
 
-    (this.node.services.pubsub as any).subscribe(stateVectorTopic(topic))
-      (this.node.services.pubsub as any).on(stateVectorTopic(topic), this.onPubSubStateVector.bind(this));
+    (this.node.services.pubsub as any).subscribe(stateVectorTopic(topic));
 
-    (this.node.services.pubsub as any).subscribe(awarenessProtocolTopic(topic))
-      (this.node.services.pubsub as any).on(awarenessProtocolTopic(topic), this.onPubSubAwareness.bind(this));
+    (this.node.services.pubsub as any).addEventListener("message", (msg) => {
+      if (msg.detail.topic == stateVectorTopic(topic)) {
+        this.onPubSubStateVector.bind(this)
+      }
+    });
+
+    (this.node.services.pubsub as any).subscribe(awarenessProtocolTopic(topic));
+
+    (this.node.services.pubsub as any).addEventListener("message", (msg) => {
+      if (msg.detail.topic == awarenessProtocolTopic(topic)) {
+        this.onPubSubAwareness.bind(this);
+      }
+    })
 
     // @ts-ignore
     node.handle(syncProtocol(topic), this.onSyncMsg.bind(this));
+    setTimeout(() => {
+      this.tryInitialSync(this.stateVectors[this.peerID], this);
+    }, 6000)
 
-    this.tryInitialSync(this.stateVectors[this.peerID], this);
   }
 
   destroy() {
-    (this.node.services.pubsub as any).unsubscribe(changesTopic(this.topic))
-      (this.node.services.pubsub as any).removeAllListeners(changesTopic(this.topic))
+    (this.node.services.pubsub as any).unsubscribe(changesTopic(this.topic));
 
-      (this.node.services.pubsub as any).unsubscribe(stateVectorTopic(this.topic))
-      (this.node.services.pubsub as any).removeAllListeners(stateVectorTopic(this.topic))
+    (this.node.services.pubsub as any).unsubscribe(stateVectorTopic(this.topic));
 
-      (this.node.services.pubsub as any).unsubscribe(awarenessProtocolTopic(this.topic))
-      (this.node.services.pubsub as any).removeAllListeners(awarenessProtocolTopic(this.topic))
+    (this.node.services.pubsub as any).unsubscribe(awarenessProtocolTopic(this.topic));
 
     // @ts-ignore
-    node.unhandle(syncProtocol(topic))
+    node.unhandle(syncProtocol(topic));
 
     this.initialSync = true;
   }
@@ -147,13 +159,13 @@ class Provider {
 
     if (!Uint8ArrayEquals(msg.data, this.stateVectors[this.peerID])) {
       // Bookkeep that this peer is out of date
-      // console.log("Peer is out of date", msg.from)
+      console.log("Peer is out of date", msg.from)
       this.queuePeerSync(msg.from);
     }
   }
 
   private onPubSubAwareness(msg: any) {
-    // console.log("Got awareness update", msg)
+    console.log("Got awareness update", msg)
     awarenessProtocol.applyAwarenessUpdate(this.awareness, msg.data, this)
   }
 
@@ -197,7 +209,7 @@ class Provider {
   }
 
   private async onSyncMsg({ stream, connection, ...rest }: { stream: ProtocolStream, connection: any }) {
-    await this.runSyncProtocol(stream, connection.remotePeer.toB58String(), false)
+    await this.runSyncProtocol(stream, connection.remotePeer.toString(), false)
   }
 
   private queuePeerSync(peerID: string) {
@@ -212,7 +224,6 @@ class Provider {
   }
 
   private async syncPeer(peerID: string) {
-    const thiz = this;
     const peer = await this.node.peerStore.get(peerIdFromString(peerID));
     let success = false;
     if (!peer) {
@@ -221,7 +232,7 @@ class Provider {
     for (const ma of peer.addresses) {
       const maStr = ma.multiaddr
       try {
-        const { stream } = await this.node.dialProtocol(maStr, syncProtocol(this.topic)) as any as { stream: ProtocolStream }
+        const stream = await this.node.dialProtocol(maStr, syncProtocol(this.topic))
         await this.runSyncProtocol(stream, peerID, true)
         success = true;
         return
@@ -230,7 +241,6 @@ class Provider {
         continue;
       }
     }
-
     throw new Error("Failed to sync with peer")
   }
 }
