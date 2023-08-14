@@ -84,7 +84,7 @@ class Provider {
     node.handle(syncProtocol(topic), this.onSyncMsg.bind(this));
     setTimeout(() => {
       this.tryInitialSync(this.stateVectors[this.peerID], this);
-    }, 6000)
+    }, 3000)
 
   }
 
