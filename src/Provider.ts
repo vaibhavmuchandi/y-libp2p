@@ -120,14 +120,6 @@ class Provider {
         this.initialSync = true;
     }
 
-    static init = async (roomId: string) => {
-        const doc = new Y.Doc()
-        const node = await createPeer()
-        await node.dial(multiaddr("/ip4/127.0.0.1/tcp/56000/ws/p2p/12D3KooWSRkaW3kEk5n6rhwedNsDMPfuSrWLx8JL93WSFQh8v8Gf"))
-        const provider = new Provider(doc, node, roomId)
-        return provider
-    }
-
     private async tryInitialSync(updateData: Uint8Array, origin: this | any) {
         const tries = 10;
         const maxWaitTime = 1000;
